@@ -188,10 +188,11 @@ module Lita
 
       def subscribe_to_match(response,id)
         subs = get_my_subscriptions(response)
-        subs << id
-        subs.uniq!
-        resp = set_my_subscriptions(response,subs)
-        response.reply("Subscribed you to match #{id}: #{resp}")
+        if (subs && [id]).empty
+          subs << id
+          resp = set_my_subscriptions(response,subs)
+          response.reply("Subscribed you to match #{id}: #{resp}")
+        end
       end
 
     end

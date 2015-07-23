@@ -2,7 +2,7 @@
 
 [![Coverage Status](https://coveralls.io/repos/sjauld/lita-cricket/badge.png)](https://coveralls.io/r/sjauld/lita-cricket)
 
-TODO: Add a description of the plugin.
+Provides live cricket scores via the Cricscore API
 
 ## Installation
 
@@ -14,8 +14,10 @@ gem "lita-cricket"
 
 ## Configuration
 
-TODO: Describe any configuration attributes the plugin exposes.
+NIL
 
 ## Usage
 
-TODO: Describe the plugin's features and how to use them.
+```
+help cricket
+```
