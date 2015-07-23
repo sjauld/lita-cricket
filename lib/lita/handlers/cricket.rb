@@ -21,6 +21,14 @@ module Lita
       )
 
       route(
+        /^\(?cricket\)?\s+(\d+)/i,
+        :score,
+        help: {
+          'cricket 743965' => 'Display the score for match 743965'
+        }
+      )
+
+      route(
         /^\(?cricket\)?\s+-s\s+(.*)$/i,
         :subscribe,
         help: {
@@ -40,7 +48,7 @@ module Lita
         /^\(?cricket\)?\s+-l$/i,
         :list,
         help: {
-          'cricket -l' => 'List matches to which you have subscribed'
+          'cricket -l' => 'List the current live matches'
         }
       )
 
@@ -60,49 +68,59 @@ module Lita
         }
       )
 
+      route(
+        /^\(?cricket\)?\s+-i$/i,
+        :info,
+        help: {
+          'cricket -i' => 'Display your favourites and subscriptions'
+        }
+      )
+
       def refresh_user(response)
-        my_favourites = redis.get("#{response.user.id}-favourites")
-        if my_favourites.nil?
+        my_favourites = get_my_favourites(response)
+        if my_favourites.empty?
           redis.set("#{response.user.id}-favourites",[].to_json)
           response.reply('I can give you live cricket updates! Type `help cricket` for more information.')
         elsif
-          update_favourites(response.user)
+          matches = get_list_of_live_matches
+          matches.each do |m|
+            unless ([ m['t1'], m['t2']] & my_favourites).empty?
+              subscribe_to_match(response,m['id'])
+            end
+          end
         end
       end
 
       def scores(response)
-        match = response.matches[0][0].to_i
-        if match == 0
-        elsif
-          puts "Looking up #{match}"
-          resp = HTTParty.get(@@ENDPOINT, query: { id: match })
-          puts resp
-          response.reply('some_information_from_the_api')
+        subs = get_my_subscriptions(response)
+        subs.each do |match|
+          get_match_score(response,match)
         end
+      end
+
+      def score(response)
+        match = response.matches[0][0].to_i
+        get_match_score(response,match)
       end
 
       def subscribe(response)
         match = response.matches[0][0].to_i
-        my_matches = JSON.parse(redis.get("#{response.user.id}-subscriptions")) rescue my_matches = []
-        my_matches << match
-        my_matches.uniq!
-        resp = redis.set("#{response.user.id}-subscriptions",my_matches)
-        response.reply("Subscribed you to match ##{match}: #{resp}")
+        subscribe_to_match(response,match)
       end
 
       def unsubscribe(response)
         match = response.matches[0][0].to_i
-        my_matches = JSON.parse(redis.get("#{response.user.id}-subscriptions")) rescue my_matches = []
-        if my_matches.delete(match) == nil
-          response.reply("You weren't subscribed to match ##{match}!")
-        elsif
-          resp = redis.set("#{response.user.id}-subscriptions",my_matches)
-          response.reply("Unsubscribed you to match ##{match}: #{resp}")
+        subs = get_my_subscriptions(response)
+        if subs.delete(match) == nil
+          response.reply("You weren't subscribed to match #{match}!")
+        else
+          resp = set_my_subscriptions(response,subs)
+          response.reply("Unsubscribed you to match #{match}: #{resp}")
         end
       end
 
       def list(response)
-        resp = HTTParty.get(@@ENDPOINT)
+        resp = get_list_of_live_matches
         #TODO: parse this list and keep going!!!
         response.reply("There are #{resp.count} live matches on!")
         resp.each do |r|
@@ -113,15 +131,68 @@ module Lita
       end
 
       def favourite(response)
+        match = response.matches[0][0]
+        favs = get_my_favourites(response)
+        favs << match
+        favs.uniq!
+        resp = set_my_favourites(response,favs)
+        response.reply("Added #{match} to your favourites: #{resp}")
       end
 
       def unfavourite(response)
+        match = response.matches[0][0]
+        favs = get_my_favourites(response)
+        if favs.delete(match) == nil
+          response.reply("#{match} wasn't in your favourite list!")
+        else
+          resp = set_my_favourites(response,favs)
+          response.reply("Removed #{match} from your favourites: #{resp}")
+        end
       end
 
-      def update_favourites(response)
+      def info(response)
+        subs = get_my_subscriptions(response)
+        favs = get_my_favourites(response)
+        response.reply("Subscriptions: #{subs.join(' | ')}")
+        response.reply("Favourites: #{favs.join(' | ')}")
       end
 
+      def get_my_subscriptions(response)
+        JSON.parse(redis.get("#{response.user.id}-subscriptions")) rescue []
+      end
 
+      def set_my_subscriptions(response,subs)
+        redis.set("#{response.user.id}-subscriptions",subs)
+      end
+
+      def get_my_favourites(response)
+        JSON.parse(redis.get("#{response.user.id}-favourites")) rescue []
+      end
+
+      def set_my_favourites(response,favs)
+        redis.set("#{response.user.id}-favourites",favs)
+      end
+
+      def get_list_of_live_matches
+        HTTParty.get(@@ENDPOINT).parsed_response
+      end
+
+      def get_match_score(response,id)
+        if id == 0
+          Lita.logger.debug("Skipping a 0 match")
+        elsif
+          resp = HTTParty.get(@@ENDPOINT, query: { id: id })
+          response.reply(resp.parsed_response[0]['de']) rescue Lita.logger.debug("Skipping a bad match")
+        end
+      end
+
+      def subscribe_to_match(response,id)
+        subs = get_my_subscriptions(response)
+        subs << id
+        subs.uniq!
+        resp = set_my_subscriptions(response,subs)
+        response.reply("Subscribed you to match #{id}: #{resp}")
+      end
 
     end
 

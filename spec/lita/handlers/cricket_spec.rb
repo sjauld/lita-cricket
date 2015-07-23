@@ -8,6 +8,7 @@ describe Lita::Handlers::Cricket, lita_handler: true do
   it {is_expected.to route('cricket -l').to(:list)}
   it {is_expected.to route('cricket -f Cromer Cricket Club').to(:favourite)}
   it {is_expected.to route('cricket -r Cromer Cricket Club').to(:unfavourite)}
+  it {is_expected.to route('cricket 743965').to(:score)}
   before{robot.trigger(:loaded)}
 
   it 'welcomes you if you have never mentioned cricket before' do
@@ -15,38 +16,49 @@ describe Lita::Handlers::Cricket, lita_handler: true do
     expect(replies.first).to eq('I can give you live cricket updates! Type `help cricket` for more information.')
   end
 
-  it 'subscribes you to matches featuring your favourite teams if you mention cricket' do
-    send_message('this is the first time i have mentioned cricket')
-    send_message('cricket')
-    #TODO: find out how we can test that nothing crapped out...
-  end
-
   it 'displays the current live matches' do
     send_message('cricket -l')
-    expect(replies.detect{|x| ( x =~/There are/ ) == 0}).to start_with('There are')
+    expect(replies.detect{|x| ( x =~/There are/ ) == 0}.nil?).to eq(false)
   end
 
   it 'subscribes/unsubscribes you to some match if you like' do
     send_message('cricket -s 743965')
-    expect(replies.last).to eq('Subscribed you to match #743965: OK')
+    expect(replies.last).to eq('Subscribed you to match 743965: OK')
     send_message('cricket -s 743963')
-    expect(replies.last).to eq('Subscribed you to match #743963: OK')
+    expect(replies.last).to eq('Subscribed you to match 743963: OK')
     send_message('cricket -u 743963')
-    expect(replies.last).to eq('Unsubscribed you to match #743963: OK')
+    expect(replies.last).to eq('Unsubscribed you to match 743963: OK')
     send_message('cricket -u 743964')
-    expect(replies.last).to eq('You weren\'t subscribed to match #743964!')
+    expect(replies.last).to eq('You weren\'t subscribed to match 743964!')
   end
 
   it 'displays scores for your cricket matches' do
+    send_message('cricket -s 743963')
+    send_message('cricket')
+    # Not sure what to test for here :(
   end
 
-  it 'lists the matches to which you are subscribed' do
+  it 'displays the score for a specific match' do
+    send_message('cricket 743963')
+    send_message('cricket 0')
+    # Not sure what to test for here :(
   end
 
-  it 'adds a favourite team' do
+  it 'adds or removes a favourite team and also updates your favourite teams if you mention cricket' do
+    send_message('cricket -f Cromer Cricket Club')
+    expect(replies.last).to eq('Added Cromer Cricket Club to your favourites: OK')
+    send_message('cricket is grouse')
+    # it is tricky to test this last feature
+    send_message('cricket -r Cromer Cricket Club')
+    expect(replies.last).to eq('Removed Cromer Cricket Club from your favourites: OK')
+    send_message('cricket -r Dee Why Cricket Club')
+    expect(replies.last).to eq('Dee Why Cricket Club wasn\'t in your favourite list!')
   end
 
-  it 'removes a favourite team' do
+  it 'lists your favourite teams and subscribed matches' do
+    send_message('cricket -i')
+    expect(replies.detect{|x| ( x =~/Subscriptions:/ ) == 0}.nil?).to eq(false)
+    expect(replies.detect{|x| ( x =~/Favourites:/ ) == 0}.nil?).to eq(false)
   end
 
 end
