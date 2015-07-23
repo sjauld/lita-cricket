@@ -79,7 +79,7 @@ module Lita
       def refresh_user(response)
         my_favourites = get_my_favourites(response)
         if my_favourites.empty?
-          redis.set("#{response.user.id}-favourites",[].to_json)
+          redis.set("#{response.user.id}-favourites",['Australia'].to_json)
           response.reply('I can give you live cricket updates! Type `help cricket` for more information.')
         elsif
           matches = get_list_of_live_matches
