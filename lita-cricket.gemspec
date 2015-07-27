@@ -1,6 +1,7 @@
+require 'lita-cricket'
 Gem::Specification.new do |spec|
   spec.name          = "lita-cricket"
-  spec.version       = "0.0.1"
+  spec.version       = Lita::Handlers::Cricket::VERSION
   spec.authors       = ["Stuart Auld"]
   spec.email         = ["sja@marsupialmusic.net"]
   spec.description   = "Provides live cricket scores directly in Lita"
