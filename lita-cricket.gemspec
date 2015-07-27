@@ -1,5 +1,5 @@
 $:.push File.expand_path('../lib', __FILE__)
-require 'lita/lita-cricket'
+require 'lita-cricket'
 
 Gem::Specification.new do |spec|
   spec.name          = "lita-cricket"
