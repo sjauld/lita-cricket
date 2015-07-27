@@ -80,22 +80,22 @@ module Lita
       )
 
       def refresh_user(response)
-        my_favourites = get_my_favourites(response)
+        my_favourites = get_my_subscriptions(response,'favourite')
         if my_favourites.empty?
-          redis.set("#{response.user.id}-favourites",['Australia'].to_json)
+          set_my_subscriptions(response,['Australia'].to_json,'favourite')
           response.reply('I can give you live cricket updates! Type `help cricket` for more information.')
         elsif
           matches = get_list_of_live_matches
           matches.each do |m|
             unless ([ m['t1'], m['t2']] & my_favourites).empty?
-              subscribe_to_match(response,m['id'])
+              subscribe_to(response,m['id'],'match')
             end
           end
         end
       end
 
       def scores(response)
-        subs = get_my_subscriptions(response)
+        subs = get_my_subscriptions(response,'match')
         subs.each do |match|
           get_match_score(response,match)
         end
@@ -108,16 +108,16 @@ module Lita
 
       def subscribe(response)
         match = response.matches[0][0].to_i
-        subscribe_to_match(response,match)
+        subscribe_to(response,match,'match')
       end
 
       def unsubscribe(response)
         match = response.matches[0][0].to_i
-        subs = get_my_subscriptions(response)
+        subs = get_my_subscriptions(response,'match')
         if subs.delete(match) == nil
           response.reply("You weren't subscribed to match #{match}!")
         else
-          resp = set_my_subscriptions(response,subs)
+          resp = set_my_subscriptions(response,subs,'match')
           response.reply("Unsubscribed you to match #{match}: #{resp}")
         end
       end
@@ -135,45 +135,27 @@ module Lita
 
       def favourite(response)
         match = response.matches[0][0]
-        favs = get_my_favourites(response)
-        favs << match
-        favs.uniq!
-        resp = set_my_favourites(response,favs)
-        response.reply("Added #{match} to your favourites: #{resp}")
+        subscribe_to(response,match,'favourite')
       end
 
       def unfavourite(response)
         match = response.matches[0][0]
-        favs = get_my_favourites(response)
-        if favs.delete(match) == nil
-          response.reply("#{match} wasn't in your favourite list!")
-        else
-          resp = set_my_favourites(response,favs)
-          response.reply("Removed #{match} from your favourites: #{resp}")
-        end
+        unsubscribe_to(response,match,'favourite')
       end
 
       def info(response)
-        subs = get_my_subscriptions(response)
-        favs = get_my_favourites(response)
+        subs = get_my_subscriptions(response,'match')
+        favs = get_my_subscriptions(response,'favourite')
         response.reply("Subscriptions: #{subs.join(' | ')}")
         response.reply("Favourites: #{favs.join(' | ')}")
       end
 
-      def get_my_subscriptions(response)
-        JSON.parse(redis.get("#{response.user.id}-subscriptions")) rescue []
+      def get_my_subscriptions(response,type)
+        JSON.parse(redis.get("#{response.user.id}-#{type}")) rescue []
       end
 
-      def set_my_subscriptions(response,subs)
-        redis.set("#{response.user.id}-subscriptions",subs)
-      end
-
-      def get_my_favourites(response)
-        JSON.parse(redis.get("#{response.user.id}-favourites")) rescue []
-      end
-
-      def set_my_favourites(response,favs)
-        redis.set("#{response.user.id}-favourites",favs)
+      def set_my_subscriptions(response,subs,type)
+        redis.set("#{response.user.id}-#{type}",subs)
       end
 
       def get_list_of_live_matches
@@ -189,12 +171,22 @@ module Lita
         end
       end
 
-      def subscribe_to_match(response,id)
-        subs = get_my_subscriptions(response)
+      def subscribe_to(response,id,type)
+        subs = get_my_subscriptions(response,type)
         if (subs & [id]).empty?
           subs << id
-          resp = set_my_subscriptions(response,subs)
-          response.reply("Subscribed you to match #{id}: #{resp}")
+          resp = set_my_subscriptions(response,subs,type)
+          response.reply("Subscribed you to #{type} #{id}: #{resp}")
+        end
+      end
+
+      def unsubscribe_to(response,id,type)
+        subs = get_my_subscriptions(response,type)
+        if subs.delete(id) == nil
+          response.reply("#{id} wasn't in your #{type} list!")
+        else
+          resp = set_my_subscriptions(response,subs,type)
+          response.reply("Unsubscribed you from #{type} #{id}: #{resp}")
         end
       end
 

@@ -46,13 +46,15 @@ describe Lita::Handlers::Cricket, lita_handler: true do
 
   it 'adds or removes a favourite team and also updates your favourite teams if you mention cricket' do
     send_message('cricket -f Cromer Cricket Club')
-    expect(replies.last).to eq('Added Cromer Cricket Club to your favourites: OK')
+    expect(replies.last).to eq('Subscribed you to favourite Cromer Cricket Club: OK')
     send_message('cricket is grouse')
     # it is tricky to test this last feature
     send_message('cricket -r Cromer Cricket Club')
-    expect(replies.last).to eq('Removed Cromer Cricket Club from your favourites: OK')
+    expect(replies.last).to eq('Unsubscribed you from favourite Cromer Cricket Club: OK')
     send_message('cricket -r Dee Why Cricket Club')
     expect(replies.last).to eq('Dee Why Cricket Club wasn\'t in your favourite list!')
+    send_message('cricket -f Derbyshire')
+    send_message('cricket')
   end
 
   it 'lists your favourite teams and subscribed matches' do
