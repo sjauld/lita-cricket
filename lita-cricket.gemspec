@@ -1,4 +1,6 @@
-require 'lita-cricket'
+$:.push File.expand_path('../lib', __FILE__)
+require 'lita/lita-cricket'
+
 Gem::Specification.new do |spec|
   spec.name          = "lita-cricket"
   spec.version       = Lita::Handlers::Cricket::VERSION
