@@ -2,7 +2,7 @@ module Lita
   module Handlers
     class Cricket < Handler
       # Version
-      VERSION = '0.0.2'
+      VERSION = '0.0.3'
 
       # Dependencies
       require 'json'
