@@ -2,7 +2,7 @@ module Lita
   module Handlers
     class Cricket < Handler
       # Version
-      VERSION = '0.0.2'
+      VERSION = '0.0.4'
 
       # Dependencies
       require 'json'
@@ -84,11 +84,13 @@ module Lita
         if my_favourites.empty?
           set_my_subscriptions(response,['Australia'].to_json,'favourite')
           response.reply('I can give you live cricket updates! Type `help cricket` for more information.')
-        elsif
-          matches = get_list_of_live_matches
-          matches.each do |m|
-            unless ([ m['t1'], m['t2']] & my_favourites).empty?
-              subscribe_to(response,m['id'],'match')
+        else
+          status, matches = get_list_of_live_matches
+          if status == :success
+            matches.each do |m|
+              unless ([ m['t1'], m['t2']] & my_favourites).empty?
+                subscribe_to(response,m['id'],'match')
+              end
             end
           end
         end
@@ -123,13 +125,18 @@ module Lita
       end
 
       def list(response)
-        resp = get_list_of_live_matches
-        #TODO: parse this list and keep going!!!
-        response.reply("There are #{resp.count} live matches on!")
-        resp.each do |r|
-          response.reply("#{r['t1']} vs #{r['t2']} (http://www.espncricinfo.com/c/engine/match/#{r['id']}.html)")
+        status, resp = get_list_of_live_matches
+        if status == :success
+          response.reply("There are #{resp.count} live matches on!")
+          resp.each do |m|
+            response.reply("#{m['t1']} vs #{m['t2']} (http://www.espncricinfo.com/c/engine/match/#{m['id']}.html)")
+          end
+        else
+          Lita.logger.error(resp.inspect)
+          response.reply("It looks like the API is down - #{resp.response.code}")
         end
-      rescue
+
+      rescue => e
         response.reply("An error may have occured, or maybe there are no live matches")
       end
 
@@ -159,7 +166,12 @@ module Lita
       end
 
       def get_list_of_live_matches
-        HTTParty.get(@@ENDPOINT).parsed_response
+        resp = HTTParty.get(@@ENDPOINT)
+        if resp.response.code.to_i > 299 || resp.response.code.to_i < 200
+          return :failure, resp
+        else
+          return :success, resp.parsed_response
+        end
       end
 
       def get_match_score(response,id)
